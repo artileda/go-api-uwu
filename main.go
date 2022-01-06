@@ -7,12 +7,11 @@ import (
 
 	"UwU/handlers"
 
-	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -46,12 +45,10 @@ func main() {
 	dep.DB = db
 
 	// connect to cache
-	dep.Cache = cache.New(&cache.Options{
-		Redis: redis.NewRing(&redis.RingOptions{
-			Addrs: map[string]string{
-				"localhost": ":6379",
-			},
-		}),
+	dep.Cache = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
 	})
 
 	app.Use(func(c *fiber.Ctx) error {

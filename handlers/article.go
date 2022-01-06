@@ -59,6 +59,10 @@ func GetAllArticles(c *fiber.Ctx) (err error) {
 
 	if len(result) == 0 {
 		result = FetchArticlesFromDB(c.Context(), *dep, params)
+		err = PersistArticlesCache(c.Context(), *dep, params, result)
+		if err != nil {
+			return err
+		}
 	}
 
 	return c.JSON(result)

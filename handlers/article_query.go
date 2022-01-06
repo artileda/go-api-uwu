@@ -4,8 +4,12 @@ import (
 	"context"
 	"time"
 
+	"encoding/json"
+
 	"github.com/georgysavva/scany/pgxscan"
 )
+
+const exp = 1 * time.Hour
 
 func FetchArticlesFromDB(ctx context.Context, db Dependencies, param ArticleParams) (result []Article) {
 
@@ -50,20 +54,21 @@ func FetchArticlesFromDB(ctx context.Context, db Dependencies, param ArticlePara
 }
 
 func FetchArticlesFromCache(ctx context.Context, db Dependencies, cacheTag string) (result []Article) {
-	db.Cache.Get(ctx, cacheTag, &result)
+	getCache(ctx, db, cacheTag, &result)
 	return
 }
 
-func PersistArticleCache(ctx context.Context, db Dependencies) error {
+func PersistArticleCache(ctx context.Context, db Dependencies) (err error) {
 	return nil
 }
 
-func PersistArticlesCache(ctx context.Context, db Dependencies) error {
-	return nil
+func PersistArticlesCache(ctx context.Context, db Dependencies, param ArticleParams, data []Article) (err error) {
+	err = setCache(ctx, db, param.CacheTag(), data)
+	return
 }
 
-func InvalidateCache(ctx context.Context, db Dependencies) error {
-	return nil
+func InvalidateCache(ctx context.Context, db Dependencies) {
+	db.Cache.FlushDB(ctx)
 }
 
 func FetchArticle(ctx context.Context, db Dependencies, id uint) (result *Article, err error) {
@@ -79,4 +84,23 @@ func FetchArticle(ctx context.Context, db Dependencies, id uint) (result *Articl
 func PersistArticle(ctx context.Context, db Dependencies, dto ArticleDTO) (err error) {
 	_, err = db.DB.Exec(ctx, "INSERT INTO articles(author_id,title,body,created_at) VALUES $1,$2,$3,$4", dto.AuthorID, dto.Title, dto.Body, time.Now())
 	return
+}
+
+func setCache(ctx context.Context, db Dependencies, key string, value interface{}) (err error) {
+	p, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+
+	db.Cache.Set(ctx, key, string(p), exp)
+	return
+}
+
+func getCache(ctx context.Context, db Dependencies, key string, value interface{}) (err error) {
+	p, err := db.Cache.Get(ctx, key).Result()
+	if err != nil {
+		return
+	}
+
+	return json.Unmarshal([]byte(p), value)
 }
