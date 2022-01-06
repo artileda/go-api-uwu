@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option go_package = "UwU/proto";
+
+package UwU;
+
+service UwU {
+    rpc GetAllArticle(ArticleParam) return ([Article]);
+}
+
+message Article {
+    uint32 id = 1;
+    uint32 author_id = 2;
+    string title = 3;
+    string body = 4;
+    timestamp created_ad = 5;
+}
+
+message ArticleId {
+    uint32 id = 1;
+}
+
+message ArticleParam {
+    optional uint32 limit  = 1;
+    optional uint32 page = 2;
+    optional bool sorted  = 3;
+    optional string author = 4;
+}
+
+message Nothing {}
