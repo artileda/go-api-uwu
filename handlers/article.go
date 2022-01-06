@@ -27,8 +27,8 @@ type ArticleDTO struct {
 type ArticleParams struct {
 	Limit  int
 	Page   int
-	Sorted bool
 	Author string
+	Query  string
 }
 
 func (a ArticleParams) CacheTag() string {
@@ -52,11 +52,9 @@ func GetAllArticles(c *fiber.Ctx) (err error) {
 		params.Page = 1
 	}
 
-	if c.Query("sorted", "false") == "true" {
-		params.Sorted = true
-	}
-
 	params.Author = c.Query("author", "")
+	params.Query = c.Query("query", "")
+
 	result := FetchArticlesFromCache(c.Context(), *dep, params.CacheTag())
 
 	if len(result) == 0 {
