@@ -4,10 +4,12 @@ services:
 
   apis:
     build: ./
-    privileged: true
+    restart: on-failure:5
     environment:
       - DB_HOST=postgres://postgres:rahasiailahi@database:5432/postgres?sslmode=disable
       - REDIS_HOST=localhost:6379
+    ports:
+      - 3000:3000
     depends_on:
       database:
         condition: service_healthy
