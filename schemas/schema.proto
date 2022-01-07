@@ -5,7 +5,9 @@ option go_package = "UwU/proto";
 package UwU;
 
 service UwU {
-    rpc GetAllArticle(ArticleParam) return ([Article]);
+    rpc GetAllArticles (ArticleParam) returns (stream Article);
+    rpc GetArticle (ArticleId) returns (Article);
+    rpc CreateArticle (ArticleInput) returns (Nothing);
 }
 
 message Article {
@@ -13,7 +15,7 @@ message Article {
     uint32 author_id = 2;
     string title = 3;
     string body = 4;
-    timestamp created_ad = 5;
+    string created_at = 5;
 }
 
 message ArticleId {
@@ -23,8 +25,14 @@ message ArticleId {
 message ArticleParam {
     optional uint32 limit  = 1;
     optional uint32 page = 2;
-    optional bool sorted  = 3;
-    optional string author = 4;
+    optional string author = 3;
+    optional string query = 4;
+}
+
+message ArticleInput{
+    uint32 author_id = 1;
+    string title = 2;
+    string body = 3;
 }
 
 message Nothing {}

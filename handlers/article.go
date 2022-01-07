@@ -1,110 +1,109 @@
 package handlers
 
 import (
-	"net/http"
+	"context"
 	"strconv"
 	"time"
 
 	"net/url"
 
-	"github.com/gofiber/fiber/v2"
+	pb "UwU/proto"
 )
 
 type Article struct {
-	ID        uint      `json:"id"`
-	AuthorID  uint      `json:"author_id"`
+	ID        uint32    `json:"id"`
+	AuthorID  uint32    `json:"author_id"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type ArticleDTO struct {
-	AuthorID uint   `json:"author_id"`
+func (a Article) ToGRPC() *pb.Article {
+	return &pb.Article{
+		Id:        a.ID,
+		AuthorId:  a.AuthorID,
+		Title:     a.Title,
+		Body:      a.Body,
+		CreatedAt: a.CreatedAt.String(),
+	}
+}
+
+type ArticleInput struct {
+	AuthorID uint32 `json:"author_id"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 }
 
+func (ai *ArticleInput) FromGRPC(b *pb.ArticleInput) {
+	ai.AuthorID = b.AuthorId
+	ai.Body = b.Body
+	ai.Title = b.Title
+}
+
 type ArticleParams struct {
-	Limit  int
-	Page   int
+	Limit  uint32
+	Page   uint32
 	Author string
 	Query  string
 }
 
-func (a ArticleParams) CacheTag() string {
-	return (strconv.Itoa(a.Limit) + "&" + strconv.Itoa(a.Page) + "&" + url.QueryEscape(a.Author))
+func (ap *ArticleParams) FromGRPC(b *pb.ArticleParam) {
+	ap.Author = b.GetAuthor()
+	ap.Limit = b.GetLimit()
+	if ap.Limit == 0 {
+		ap.Limit = 10
+	}
+	ap.Page = b.GetLimit()
+	if ap.Page == 0 {
+		ap.Page = 1
+	}
+	ap.Query = b.GetQuery()
 }
 
-func GetAllArticles(c *fiber.Ctx) (err error) {
+func (a ArticleParams) CacheTag() string {
+	return (strconv.FormatUint(uint64(a.Limit), 10) + "&" + strconv.FormatUint(uint64(a.Limit), 10) + "&" + url.QueryEscape(a.Author) + "&" + url.QueryEscape(a.Query))
+}
+
+func (dp Dependencies) GetAllArticles(in *pb.ArticleParam, stream pb.UwU_GetAllArticlesServer) error {
+	ctx := context.TODO()
 	params := ArticleParams{}
-
-	dep, ok := c.Locals("deps").(*Dependencies)
-	if !ok {
-		return c.SendStatus(http.StatusInternalServerError)
-	}
-
-	params.Limit, err = strconv.Atoi(c.Query("limit"))
-	if err != nil {
-		params.Limit = 25
-	}
-	params.Page, err = strconv.Atoi(c.Query("limit"))
-	if err != nil {
-		params.Page = 1
-	}
-
-	params.Author = c.Query("author", "")
-	params.Query = c.Query("query", "")
-
-	result := FetchArticlesFromCache(c.Context(), *dep, params.CacheTag())
+	params.FromGRPC(in)
+	result := FetchArticlesFromCache(ctx, dp, params.CacheTag())
+	var err error
 
 	if len(result) == 0 {
-		result, err = FetchArticlesFromDB(c.Context(), *dep, params)
+		result, err = FetchArticlesFromDB(ctx, dp, params)
 		if err != nil {
 			return err
 		}
-		err = PersistArticlesCache(c.Context(), *dep, params, result)
+		err = PersistArticlesCache(ctx, dp, params, result)
 		if err != nil {
 			return err
 		}
 	}
 
-	return c.JSON(result)
+	for _, item := range result {
+		if err = stream.Send(item.ToGRPC()); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
-func GetArticle(c *fiber.Ctx) (err error) {
-	id, err := c.ParamsInt("id")
+func (db Dependencies) GetArticle(ctx context.Context, in *pb.ArticleId) (*pb.Article, error) {
+	var err error
+
+	res, err := FetchArticle(ctx, db, in.Id)
 	if err != nil {
-		return
-	}
-	if id < 0 {
-		id -= (2 * id)
+		return nil, err
 	}
 
-	dep, ok := c.Locals("deps").(*Dependencies)
-	if !ok {
-		return c.SendStatus(http.StatusInternalServerError)
-	}
-
-	result, err := FetchArticle(c.Context(), *dep, uint(id))
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(result)
+	return res.ToGRPC(), nil
 }
 
-func CreateArticle(c *fiber.Ctx) (err error) {
-	newArticle := new(ArticleDTO)
+func (db Dependencies) CreateArticle(ctx context.Context, in *pb.ArticleInput) (*pb.Nothing, error) {
+	newArticle := new(ArticleInput)
+	newArticle.FromGRPC(in)
 
-	dep, ok := c.Locals("deps").(*Dependencies)
-	if !ok {
-		return c.SendStatus(http.StatusInternalServerError)
-	}
-
-	err = c.BodyParser(&newArticle)
-	if err != nil {
-		return
-	}
-
-	return PersistArticle(c.Context(), *dep, *newArticle)
+	return &pb.Nothing{}, PersistArticle(ctx, db, *newArticle)
 }

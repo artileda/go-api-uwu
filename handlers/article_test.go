@@ -18,7 +18,7 @@ import (
 func TestArticle(t *testing.T) {
 	c := context.TODO()
 	dep := handlers.Dependencies{}
-	newArticle := handlers.ArticleDTO{
+	newArticle := handlers.ArticleInput{
 		AuthorID: 1,
 		Title:    "Chicken running by its feet",
 		Body:     "Chicken running by its feet, but the feet its tasty for humans.",

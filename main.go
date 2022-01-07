@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
 
 	"UwU/handlers"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/gofiber/fiber/v2"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"google.golang.org/grpc"
+
+	pb "UwU/proto"
 )
 
 func main() {
@@ -26,8 +29,6 @@ func main() {
 	if !ok {
 		log.Fatalln("DB_HOST required")
 	}
-
-	app := fiber.New()
 
 	// migration
 	m, err := migrate.New(
@@ -59,18 +60,20 @@ func main() {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-	handlers.InvalidateCache(context.TODO(),dep)
+	handlers.InvalidateCache(context.TODO(), dep)
 
-	app.Use(func(c *fiber.Ctx) error {
-		c.Locals("deps", &dep)
-		return c.Next()
-	})
+	listener, err := net.Listen("tcp", "localhost:3000")
+	if err != nil {
+		log.Fatalln("Failed to listen:", err)
+	}
+	defer listener.Close()
 
-	app.Get("/articles", handlers.GetAllArticles)
+	server := grpc.NewServer()
 
-	app.Get("/article/:id", handlers.GetArticle)
+	pb.RegisterUwUServer(server, dep)
+	log.Printf("Server listening at %s", listener.Addr().String())
 
-	app.Post("/article", handlers.CreateArticle)
-
-	app.Listen(":3000")
+	if err := server.Serve(listener); err != nil {
+		log.Fatalln("Failed to serve:", err)
+	}
 }
