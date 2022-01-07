@@ -62,7 +62,7 @@ func main() {
 	})
 	handlers.InvalidateCache(context.TODO(), dep)
 
-	listener, err := net.Listen("tcp", "localhost:3000")
+	listener, err := net.Listen("tcp", "0.0.0.0:3000")
 	if err != nil {
 		log.Fatalln("Failed to listen:", err)
 	}
