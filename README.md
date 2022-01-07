@@ -1,6 +1,6 @@
 ## Go-API-UwU
 
-An example of Go web api with Redis and Postgresql.
+An example of Go web api with GRPC, Redis and Postgresql.
 
 ## How to run this
 

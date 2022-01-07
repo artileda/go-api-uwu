@@ -2,15 +2,18 @@ version: "3.0"
 
 services:
 
-  # apis:
-  #   build: ./
-  #   privileged: true
-  #   environment:
-  #     - DB_HOST=postgres://postgres:rahasiailahi@database:5432/postgres?sslmode=disable
-  #     - REDIS_HOST=localhost:6379
-  #   depends_on:
-  #     - database
-  #     - cache
+  apis:
+    build: ./
+    privileged: true
+    environment:
+      - DB_HOST=postgres://postgres:rahasiailahi@database:5432/postgres?sslmode=disable
+      - REDIS_HOST=localhost:6379
+    depends_on:
+      database:
+        condition: service_healthy
+
+      cache:
+        condition: service_healthy
 
   database:
     image: "postgres:12.9-alpine"
@@ -21,6 +24,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=rahasiailahi
       - POSTGRES_DB=postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:5342"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   
   cache:
     image: "redis:alpine"
@@ -28,3 +36,8 @@ services:
       - 6379:6379
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:6379"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
