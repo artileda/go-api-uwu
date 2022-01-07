@@ -59,7 +59,7 @@ func main() {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-	handlers.InvalidateCache(context.TODO())
+	handlers.InvalidateCache(context.TODO(),dep)
 
 	app.Use(func(c *fiber.Ctx) error {
 		c.Locals("deps", &dep)
