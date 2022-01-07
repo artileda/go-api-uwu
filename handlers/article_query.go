@@ -72,10 +72,10 @@ func InvalidateCache(ctx context.Context, db Dependencies) {
 	db.Cache.FlushDB(ctx)
 }
 
-func FetchArticle(ctx context.Context, db Dependencies, id uint32) (result *Article, err error) {
+func FetchArticle(ctx context.Context, db Dependencies, id uint32) (result *Article) {
 	res := []Article{}
 
-	err = pgxscan.Select(ctx, db.DB, &res, "SELECT id,author_id,title,body,created_at FROM articles WHERE id=$1 LIMIT 1", id)
+	_ = pgxscan.Select(ctx, db.DB, &res, "SELECT id,author_id,title,body,created_at FROM articles WHERE id=$1 LIMIT 1", id)
 	if len(res) == 0 {
 		result = &Article{}
 	} else {

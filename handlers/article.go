@@ -91,14 +91,7 @@ func (dp Dependencies) GetAllArticles(in *pb.ArticleParam, stream pb.UwU_GetAllA
 }
 
 func (db Dependencies) GetArticle(ctx context.Context, in *pb.ArticleId) (*pb.Article, error) {
-	var err error
-
-	res, err := FetchArticle(ctx, db, in.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	return res.ToGRPC(), nil
+	return FetchArticle(ctx, db, in.Id).ToGRPC(), nil
 }
 
 func (db Dependencies) CreateArticle(ctx context.Context, in *pb.ArticleInput) (*pb.Nothing, error) {
