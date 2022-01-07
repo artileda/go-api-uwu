@@ -7,6 +7,7 @@ services:
   #   privileged: true
   #   environment:
   #     - DB_HOST=postgres://postgres:rahasiailahi@database:5432/postgres?sslmode=disable
+  #     - REDIS_HOST=localhost:6379
   #   depends_on:
   #     - database
   #     - cache

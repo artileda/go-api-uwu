@@ -22,6 +22,11 @@ func main() {
 		log.Fatalln("DB_HOST required")
 	}
 
+	cacheHost, ok := os.LookupEnv("REDIS_HOST")
+	if !ok {
+		log.Fatalln("DB_HOST required")
+	}
+
 	app := fiber.New()
 
 	// migration
@@ -32,7 +37,11 @@ func main() {
 		log.Fatalln(err)
 		return
 	}
-	m.Up()
+	err = m.Up()
+	if err != nil && err.Error() != "no change" {
+		log.Fatalln(err)
+		return
+	}
 	m.Close()
 
 	// connect to db
@@ -46,10 +55,11 @@ func main() {
 
 	// connect to cache
 	dep.Cache = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     cacheHost,
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+	handlers.InvalidateCache(context.TODO())
 
 	app.Use(func(c *fiber.Ctx) error {
 		c.Locals("deps", &dep)

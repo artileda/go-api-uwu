@@ -11,7 +11,7 @@ import (
 
 const exp = 1 * time.Hour
 
-func FetchArticlesFromDB(ctx context.Context, db Dependencies, param ArticleParams) (result []Article) {
+func FetchArticlesFromDB(ctx context.Context, db Dependencies, param ArticleParams) (result []Article, err error) {
 
 	if (param.Author != "") && (param.Query != "") {
 		query := `
@@ -20,35 +20,36 @@ func FetchArticlesFromDB(ctx context.Context, db Dependencies, param ArticlePara
 		FROM articles 
 		LEFT JOIN authors ON 
 		articles.author_id=authors.id 
-		AND authors.name=$3
-		AND articles.articles_fts @@ to_tsquery('english','$4') 
+		WHERE authors.name=$3 
+		AND articles.article_fts @@ to_tsquery('english',$4) 
 		ORDER BY created_at DESC LIMIT $1 OFFSET $2`
-		pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*param.Page, param.Author, param.Query)
+		err = pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*(param.Page-1), param.Author, param.Query)
 	} else if param.Query != "" {
 		query := `
 		SELECT 
 		   id,author_id,title,body,created_at 
 		FROM articles 
-		WHERE articles_fts @@ to_tsquery('english','$3')
+		WHERE article_fts @@ to_tsquery('english',$3)
 		ORDER BY created_at DESC LIMIT $1 OFFSET $2 `
-		pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*param.Page, param.Query)
+		err = pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*(param.Page-1), param.Query)
 	} else if param.Author != "" {
 		query := `
 		SELECT 
 			articles.id,articles.author_id,articles.title,articles.body,articles.created_at 
 		FROM articles
-		LEFT JOIN authors ON 
+		INNER JOIN authors ON 
 		articles.author_id=authors.id 
 		AND authors.name=$3 
-		ORDER BY created_at DESC LIMIT $1 OFFSET $2`
-		pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*param.Page, param.Author)
+		ORDER BY created_at DESC 
+		LIMIT $1 OFFSET $2`
+		err = pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*(param.Page-1), param.Author)
 	} else {
 		query := `
 		SELECT 
 			id,author_id,title,body,created_at 
 		FROM articles
 		ORDER BY created_at DESC LIMIT $1 OFFSET $2 `
-		pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*param.Page)
+		err = pgxscan.Select(ctx, db.DB, &result, query, param.Limit, param.Limit*(param.Page-1))
 	}
 	return
 }
@@ -82,7 +83,8 @@ func FetchArticle(ctx context.Context, db Dependencies, id uint) (result *Articl
 }
 
 func PersistArticle(ctx context.Context, db Dependencies, dto ArticleDTO) (err error) {
-	_, err = db.DB.Exec(ctx, "INSERT INTO articles(author_id,title,body,created_at) VALUES $1,$2,$3,$4", dto.AuthorID, dto.Title, dto.Body, time.Now())
+	_, err = db.DB.Exec(ctx, "INSERT INTO articles(author_id,title,body,created_at) VALUES ($1,$2,$3,$4)", dto.AuthorID, dto.Title, dto.Body, time.Now())
+	InvalidateCache(ctx, db)
 	return
 }
 

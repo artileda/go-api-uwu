@@ -19,7 +19,7 @@ type Article struct {
 }
 
 type ArticleDTO struct {
-	AuthorID string `json:"author_id"`
+	AuthorID uint   `json:"author_id"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 }
@@ -58,7 +58,10 @@ func GetAllArticles(c *fiber.Ctx) (err error) {
 	result := FetchArticlesFromCache(c.Context(), *dep, params.CacheTag())
 
 	if len(result) == 0 {
-		result = FetchArticlesFromDB(c.Context(), *dep, params)
+		result, err = FetchArticlesFromDB(c.Context(), *dep, params)
+		if err != nil {
+			return err
+		}
 		err = PersistArticlesCache(c.Context(), *dep, params, result)
 		if err != nil {
 			return err
@@ -90,17 +93,18 @@ func GetArticle(c *fiber.Ctx) (err error) {
 	return c.JSON(result)
 }
 
-func CreateArticle(c *fiber.Ctx) error {
-	newArticle := ArticleDTO{}
+func CreateArticle(c *fiber.Ctx) (err error) {
+	newArticle := new(ArticleDTO)
 
 	dep, ok := c.Locals("deps").(*Dependencies)
 	if !ok {
 		return c.SendStatus(http.StatusInternalServerError)
 	}
 
-	if c.BodyParser(&newArticle) != nil {
-		return c.SendStatus(http.StatusUnprocessableEntity)
+	err = c.BodyParser(&newArticle)
+	if err != nil {
+		return
 	}
 
-	return PersistArticle(c.Context(), *dep, newArticle)
+	return PersistArticle(c.Context(), *dep, *newArticle)
 }
