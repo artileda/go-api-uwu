@@ -72,7 +72,7 @@ func InvalidateCache(ctx context.Context, db Dependencies) {
 	db.Cache.FlushDB(ctx)
 }
 
-func FetchArticle(ctx context.Context, db Dependencies, id uint) (result *Article, err error) {
+func FetchArticle(ctx context.Context, db Dependencies, id uint32) (result *Article, err error) {
 	row, err := db.DB.Query(ctx, "SELECT id,author_id,title,body,created_at FROM articles WHERE id=$1 LIMIT 1", id)
 	if err != nil {
 		return
@@ -82,7 +82,7 @@ func FetchArticle(ctx context.Context, db Dependencies, id uint) (result *Articl
 	return
 }
 
-func PersistArticle(ctx context.Context, db Dependencies, dto ArticleDTO) (err error) {
+func PersistArticle(ctx context.Context, db Dependencies, dto ArticleInput) (err error) {
 	_, err = db.DB.Exec(ctx, "INSERT INTO articles(author_id,title,body,created_at) VALUES ($1,$2,$3,$4)", dto.AuthorID, dto.Title, dto.Body, time.Now())
 	InvalidateCache(ctx, db)
 	return
