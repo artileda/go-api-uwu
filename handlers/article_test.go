@@ -7,8 +7,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-redis/redis"
-	"github.com/golang-migrate/migrate"
+	"github.com/go-redis/redis/v8"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -37,14 +40,14 @@ func TestArticle(t *testing.T) {
 
 	// migration
 	m, err := migrate.New(
-		"file://schemas/migrations",
+		"file://../schemas/migrations",
 		dbHost)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	m.Up()
-	m.Close()
+	defer m.Down()
 
 	// connect to db
 	db, err := pgxpool.Connect(context.Background(), dbHost)
