@@ -1,0 +1,21 @@
+version: "3.0"
+
+services:
+
+  database:
+    image: "postgres:12.9-alpine"
+    restart: on-failure:3
+    ports: 
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rahasiailahi
+      - POSTGRES_DB=postgres
+
+  
+  cache:
+    image: "redis:alpine"
+    ports:
+      - 6379:6379
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes

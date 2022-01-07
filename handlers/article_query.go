@@ -73,12 +73,14 @@ func InvalidateCache(ctx context.Context, db Dependencies) {
 }
 
 func FetchArticle(ctx context.Context, db Dependencies, id uint32) (result *Article, err error) {
-	row, err := db.DB.Query(ctx, "SELECT id,author_id,title,body,created_at FROM articles WHERE id=$1 LIMIT 1", id)
-	if err != nil {
-		return
-	}
+	res := []Article{}
 
-	err = pgxscan.ScanOne(&result, row)
+	err = pgxscan.Select(ctx, db.DB, &res, "SELECT id,author_id,title,body,created_at FROM articles WHERE id=$1 LIMIT 1", id)
+	if len(res) == 0 {
+		result = &Article{}
+	} else {
+		result = &res[0]
+	}
 	return
 }
 
