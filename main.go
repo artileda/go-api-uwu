@@ -7,18 +7,22 @@ import (
 
 	"UwU/handlers"
 
-	"github.com/go-redis/cache/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 func main() {
 	dep := handlers.Dependencies{}
 	dbHost, ok := os.LookupEnv("DB_HOST")
+	if !ok {
+		log.Fatalln("DB_HOST required")
+	}
+
+	cacheHost, ok := os.LookupEnv("REDIS_HOST")
 	if !ok {
 		log.Fatalln("DB_HOST required")
 	}
@@ -33,7 +37,11 @@ func main() {
 		log.Fatalln(err)
 		return
 	}
-	m.Up()
+	err = m.Up()
+	if err != nil && err.Error() != "no change" {
+		log.Fatalln(err)
+		return
+	}
 	m.Close()
 
 	// connect to db
@@ -46,13 +54,12 @@ func main() {
 	dep.DB = db
 
 	// connect to cache
-	dep.Cache = cache.New(&cache.Options{
-		Redis: redis.NewRing(&redis.RingOptions{
-			Addrs: map[string]string{
-				"localhost": ":6379",
-			},
-		}),
+	dep.Cache = redis.NewClient(&redis.Options{
+		Addr:     cacheHost,
+		Password: "", // no password set
+		DB:       0,  // use default DB
 	})
+	handlers.InvalidateCache(context.TODO(),dep)
 
 	app.Use(func(c *fiber.Ctx) error {
 		c.Locals("deps", &dep)
